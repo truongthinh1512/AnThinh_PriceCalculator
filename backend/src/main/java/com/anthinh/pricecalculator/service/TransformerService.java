@@ -147,6 +147,24 @@ public class TransformerService {
         return usage.getCost();
     }
 
+    @Transactional
+    public void deleteTransformer(Long id) {
+        Transformer transformer = transformerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Transformer not found"));
+        
+        // Delete all usages first
+        transformerWindingRepository.deleteAll(transformerWindingRepository.findByTransformer(transformer));
+        transformerAccessoryUsageRepository.deleteAll(transformerAccessoryUsageRepository.findByTransformer(transformer));
+        
+        if (transformer.getType() == TransformerType.VUONG) {
+            squareCoreUsageRepository.findByTransformer(transformer).ifPresent(squareCoreUsageRepository::delete);
+        } else if (transformer.getType() == TransformerType.TRON) {
+            roundCoreUsageRepository.findByTransformer(transformer).ifPresent(roundCoreUsageRepository::delete);
+        }
+
+        transformerRepository.delete(transformer);
+    }
+
     public TransformerDetailDto getTransformerDetails(Long id) {
         Transformer t = transformerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transformer not found"));

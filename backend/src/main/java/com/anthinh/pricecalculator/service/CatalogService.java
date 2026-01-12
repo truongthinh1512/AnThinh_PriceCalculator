@@ -32,6 +32,17 @@ public class CatalogService {
         return mapToWindingDto(windingSpecRepository.save(entity));
     }
 
+    public WindingSpecDto updateWindingSpec(Long id, WindingSpecDto dto) {
+        WindingSpec entity = windingSpecRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("WindingSpec not found"));
+        updateWindingEntity(entity, dto);
+        return mapToWindingDto(windingSpecRepository.save(entity));
+    }
+
+    public void deleteWindingSpec(Long id) {
+        windingSpecRepository.deleteById(id);
+    }
+
     // --- Accessory ---
     public List<AccessoryDto> getAllAccessories() {
         return accessoryRepository.findAll().stream().map(this::mapToAccessoryDto).collect(Collectors.toList());
@@ -41,6 +52,17 @@ public class CatalogService {
         Accessory entity = new Accessory();
         updateAccessoryEntity(entity, dto);
         return mapToAccessoryDto(accessoryRepository.save(entity));
+    }
+
+    public AccessoryDto updateAccessory(Long id, AccessoryDto dto) {
+        Accessory entity = accessoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Accessory not found"));
+        updateAccessoryEntity(entity, dto);
+        return mapToAccessoryDto(accessoryRepository.save(entity));
+    }
+
+    public void deleteAccessory(Long id) {
+        accessoryRepository.deleteById(id);
     }
 
     // --- EiLamination & EiCore ---
@@ -73,6 +95,44 @@ public class CatalogService {
         core = eiCoreRepository.save(core);
 
         return mapToEiLaminationDto(lamination, core);
+    }
+
+    @Transactional
+    public EiLaminationDto updateEiLamination(Long id, EiLaminationDto dto) {
+        EiLamination lamination = eiLaminationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("EiLamination not found"));
+        
+        lamination.setName(dto.getName());
+        lamination.setDescription(dto.getDescription());
+        lamination.setPricePerKg(dto.getPricePerKg());
+        lamination = eiLaminationRepository.save(lamination);
+
+        EiCore core = eiCoreRepository.findByLamination(lamination)
+                .orElse(new EiCore()); // Should ideally exist, but fallback to new if missing
+        
+        if (core.getId() == null) {
+            core.setLamination(lamination);
+        }
+        
+        core.setName(dto.getCoreName() != null ? dto.getCoreName() : dto.getName());
+        core.setDescription(dto.getCoreDescription());
+        core.setPrice(dto.getCorePrice());
+        eiCoreRepository.save(core);
+
+        return mapToEiLaminationDto(lamination, core);
+    }
+
+    @Transactional
+    public void deleteEiLamination(Long id) {
+        EiLamination lamination = eiLaminationRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("EiLamination not found"));
+        // EiCore is OneToOne but we might need to delete it manually if CascadeType is not set to REMOVE
+        // Checking EiCore entity definition: CascadeType is NOT defined in OneToOne annotation in EiCore class provided earlier.
+        // Wait, EiCore OWNS the relationship (@JoinColumn is in EiCore). EiLamination doesn't know about EiCore.
+        // So we must delete EiCore FIRST.
+        
+        eiCoreRepository.findByLamination(lamination).ifPresent(eiCoreRepository::delete);
+        eiLaminationRepository.delete(lamination);
     }
 
     // --- Mappers ---

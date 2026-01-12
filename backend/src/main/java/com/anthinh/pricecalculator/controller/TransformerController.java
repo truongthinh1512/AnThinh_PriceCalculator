@@ -29,4 +29,10 @@ public class TransformerController {
     public ResponseEntity<TransformerDetailDto> getTransformerDetails(@PathVariable Long id) {
         return ResponseEntity.ok(transformerService.getTransformerDetails(id));
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTransformer(@PathVariable Long id) {
+        transformerService.deleteTransformer(id);
+        return ResponseEntity.noContent().build();
+    }
 }
