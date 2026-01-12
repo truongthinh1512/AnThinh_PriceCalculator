@@ -1,0 +1,64 @@
+### 1. Create Winding Spec (Dây quấn)
+POST http://localhost:8080/api/catalog/winding-specs
+Content-Type: application/json
+
+{
+  "name": "Dây đồng 0.35",
+  "description": "Dây Thái",
+  "type": "PRIMARY",
+  "material": "COPPER",
+  "diameter": 0.35,
+  "pricePerKg": 250000
+}
+
+### 2. Create Accessory (Phụ kiện - Chân đế)
+POST http://localhost:8080/api/catalog/accessories
+Content-Type: application/json
+
+{
+  "type": "MOUNTING_BASE",
+  "name": "Chân đế 500VA",
+  "description": "Sắt mạ kẽm",
+  "unitType": "PER_PIECE",
+  "unitPrice": 15000
+}
+
+### 3. Create EiLamination (Phe & Lõi)
+POST http://localhost:8080/api/catalog/ei-laminations
+Content-Type: application/json
+
+{
+  "name": "Phe 32",
+  "description": "Tole silic Nhật",
+  "pricePerKg": 45000,
+  "coreName": "Lõi 32x40",
+  "corePrice": 35000
+}
+
+### 4. Create Square Transformer (Biến áp Vuông)
+# Note: Ensure IDs match the created items above (usually 1 if DB is fresh)
+POST http://localhost:8080/api/transformers/square
+Content-Type: application/json
+
+{
+  "name": "Biến áp cách ly 500VA",
+  "model3dUrl": "http://example.com/models/ba500.glb",
+  "eiLaminationId": 1,
+  "laminationWeightKg": 3.5,
+  "windings": [
+    {
+      "windingSpecId": 1,
+      "weightKg": 0.8
+    }
+  ],
+  "accessories": [
+    {
+      "accessoryId": 1,
+      "quantity": 2
+    }
+  ]
+}
+
+### 5. Get Transformer Details
+GET http://localhost:8080/api/transformers/1
+Accept: application/json
