@@ -1,17 +1,39 @@
-### 1. Create Winding Spec (Dây quấn)
+### ==================== WINDING SPECS ====================
+
+### 1.1 Create Winding Spec (Primary - 0.35mm)
 POST http://localhost:8080/api/catalog/winding-specs
 Content-Type: application/json
 
 {
   "name": "Dây đồng 0.35",
-  "description": "Dây Thái",
+  "description": "Dây Thái - Primary",
   "type": "PRIMARY",
   "material": "COPPER",
   "diameter": 0.35,
   "pricePerKg": 250000
 }
 
-### 2. Create Accessory (Phụ kiện - Chân đế)
+### 1.2 Create Winding Spec (Secondary - 1.20mm)
+POST http://localhost:8080/api/catalog/winding-specs
+Content-Type: application/json
+
+{
+  "name": "Dây đồng 1.20",
+  "description": "Dây Lioa - Secondary",
+  "type": "SECONDARY",
+  "material": "COPPER",
+  "diameter": 1.20,
+  "pricePerKg": 260000
+}
+
+### 1.3 Get All Winding Specs
+GET http://localhost:8080/api/catalog/winding-specs
+Accept: application/json
+
+
+### ==================== ACCESSORIES ====================
+
+### 2.1 Create Accessory (Mounting Base)
 POST http://localhost:8080/api/catalog/accessories
 Content-Type: application/json
 
@@ -23,42 +45,100 @@ Content-Type: application/json
   "unitPrice": 15000
 }
 
-### 3. Create EiLamination (Phe & Lõi)
+### 2.2 Create Accessory (Terminal Block)
+POST http://localhost:8080/api/catalog/accessories
+Content-Type: application/json
+
+{
+  "type": "TERMINAL_BLOCK",
+  "name": "Cầu đấu domino 10A",
+  "description": "Nhựa chống cháy",
+  "unitType": "PER_PIECE",
+  "unitPrice": 5000
+}
+
+### 2.3 Create Accessory (Bolts & Nuts)
+POST http://localhost:8080/api/catalog/accessories
+Content-Type: application/json
+
+{
+  "type": "SCREW",
+  "name": "Bulong M4x20",
+  "description": "Inox 304",
+  "unitType": "PER_KG",
+  "unitPrice": 120000
+}
+
+### 2.4 Get All Accessories
+GET http://localhost:8080/api/catalog/accessories
+Accept: application/json
+
+
+### ==================== EI LAMINATIONS ====================
+
+### 3.1 Create EiLamination (Phe 32)
 POST http://localhost:8080/api/catalog/ei-laminations
 Content-Type: application/json
 
 {
-  "name": "Phe 32",
-  "description": "Tole silic Nhật",
+  "name": "Phe 32 (Tole Silic)",
+  "description": "Tole silic Nhật nhập khẩu",
   "pricePerKg": 45000,
   "coreName": "Lõi 32x40",
   "corePrice": 35000
 }
 
-### 4. Create Square Transformer (Biến áp Vuông)
-# Note: Ensure IDs match the created items above (usually 1 if DB is fresh)
+### 3.2 Create EiLamination (Phe 40)
+POST http://localhost:8080/api/catalog/ei-laminations
+Content-Type: application/json
+
+{
+  "name": "Phe 40 (Tole Den)",
+  "description": "Tole đen thường",
+  "pricePerKg": 32000,
+  "coreName": "Lõi 40x50",
+  "corePrice": 42000
+}
+
+### 3.3 Get All EI Laminations
+GET http://localhost:8080/api/catalog/ei-laminations
+Accept: application/json
+
+
+### ==================== TRANSFORMERS ====================
+
+### 4.1 Create Square Transformer (500VA)
+# Uses: EiLamination #1, WindingSpec #1 (Pri), WindingSpec #2 (Sec), Accessory #1
 POST http://localhost:8080/api/transformers/square
 Content-Type: application/json
 
 {
-  "name": "Biến áp cách ly 500VA",
+  "name": "Biến áp cách ly 500VA (Standard)",
   "model3dUrl": "http://example.com/models/ba500.glb",
   "eiLaminationId": 1,
   "laminationWeightKg": 3.5,
   "windings": [
     {
       "windingSpecId": 1,
-      "weightKg": 0.8
+      "weightKg": 0.3
+    },
+    {
+      "windingSpecId": 2,
+      "weightKg": 0.5
     }
   ],
   "accessories": [
     {
       "accessoryId": 1,
       "quantity": 2
+    },
+    {
+      "accessoryId": 2,
+      "quantity": 1
     }
   ]
 }
 
-### 5. Get Transformer Details
+### 4.2 Get Transformer Details
 GET http://localhost:8080/api/transformers/1
 Accept: application/json

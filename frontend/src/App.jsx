@@ -1,18 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
     Calculator as CalculatorIcon, 
     Book, 
     Plus, 
     X, 
     Settings, 
-    Search,
-    Menu,
-    Trash2,
-    Save,
-    RotateCcw,
-    Edit,
-    Clock,
-    RefreshCw
+    Search, 
+    Menu, 
+    Trash2, 
+    Save, 
+    RotateCcw, 
+    Edit, 
+    Clock, 
+    RefreshCw 
 } from 'lucide-react';
 
 function App() {
@@ -31,20 +31,32 @@ function App() {
     });
 
     // Master Data
-    const [laminations, setLaminations] = useState([
-        { id: 1, name: 'Phe 32', pricePerKg: 45000, coreName: 'Lõi 32x40', corePrice: 15000, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() },
-        { id: 2, name: 'Phe 40', pricePerKg: 48000, coreName: 'Lõi 40x50', corePrice: 22000, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() },
-    ]);
+    const [laminations, setLaminations] = useState([]);
+    const [windingSpecs, setWindingSpecs] = useState([]);
+    const [accessories, setAccessories] = useState([]);
 
-    const [windingSpecs, setWindingSpecs] = useState([
-        { id: 1, name: 'Đồng Sơ Cấp 0.35', material: 'COPPER', type: 'PRIMARY', diameter: 0.35, pricePerKg: 280000, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() },
-        { id: 2, name: 'Đồng Thứ Cấp 1.2', material: 'COPPER', type: 'SECONDARY', diameter: 1.20, pricePerKg: 280000, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() },
-    ]);
+    // API Helpers
+    const fetchCatalog = async () => {
+        try {
+            const [lamRes, windRes, accRes, txRes] = await Promise.all([
+                fetch('/api/catalog/ei-laminations'),
+                fetch('/api/catalog/winding-specs'),
+                fetch('/api/catalog/accessories'),
+                fetch('/api/transformers')
+            ]);
+            
+            if (lamRes.ok) setLaminations(await lamRes.json());
+            if (windRes.ok) setWindingSpecs(await windRes.json());
+            if (accRes.ok) setAccessories(await accRes.json());
+            if (txRes.ok) setSavedTransformers(await txRes.json());
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
+        }
+    };
 
-    const [accessories, setAccessories] = useState([
-        { id: 1, name: 'Dây ra 0.5mm', type: 'ELECTRIC_WIRE', unitType: 'PER_METER', unitPrice: 5000, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() },
-        { id: 2, name: 'Ốc M4', type: 'BOLT', unitType: 'PER_PIECE', unitPrice: 500, createdDate: new Date().toISOString(), updatedDate: new Date().toISOString() },
-    ]);
+    useEffect(() => {
+        fetchCatalog();
+    }, []);
 
     // Saved Transformers (Database Simulation)
     const [savedTransformers, setSavedTransformers] = useState([]);
@@ -166,11 +178,18 @@ function App() {
         
         const windingsResult = newTransformer.windings.map(w => {
             const spec = windingSpecs.find(s => s.id == w.specId);
-            const cost = calculateWindingCost(w);
+            const calc = calculateWindingCost(w); // returns object now or number? It returns number in old code.
+            // We need to calculate weight here for API payload
+            const turnLengthM = (parseFloat(newTransformer.turnLength) || 0) / 100;
+            const totalLengthM = w.turnCount * turnLengthM;
+            const areaMm2 = spec ? (spec.diameter/2)**2 * Math.PI : 0;
+            const weightKg = (areaMm2 * totalLengthM) * 0.00896;
+
             return {
                 ...w, 
                 name: spec ? spec.name : 'Unknown',
-                cost: cost
+                cost: calc,
+                calculatedWeight: weightKg 
             };
         });
 
@@ -199,34 +218,67 @@ function App() {
         };
     };
 
-    const handleCalculateAndSave = (e) => {
+    const handleCalculateAndSave = async (e) => {
         e.preventDefault();
         const result = performCalculation();
-        
-        if (editingId) {
-            // Update
-            setSavedTransformers(prev => prev.map(t => {
-                if (t.id === editingId) {
-                    return { ...t, ...result, inputData: { ...newTransformer }, updatedDate: new Date().toISOString() };
-                }
-                return t;
-            }));
-            alert('Đã cập nhật dữ liệu!');
-            setIsEditModalOpen(false); // Close modal
-        } else {
-            // Create
-            const newItem = {
-                id: Date.now(),
-                ...result,
-                inputData: { ...newTransformer },
-                createdDate: new Date().toISOString(),
-                updatedDate: new Date().toISOString()
+        setLastCalculated(result); // Show preview immediately
+
+        if (newTransformer.type === 'SQUARE') {
+            const payload = {
+                name: newTransformer.name || 'Biến áp Vuông',
+                model3dUrl: '',
+                eiLaminationId: newTransformer.laminationId,
+                laminationWeightKg: parseFloat(newTransformer.coreWeight),
+                windings: result.windings.map(w => ({
+                    windingSpecId: w.specId,
+                    weightKg: w.calculatedWeight
+                })),
+                accessories: result.accessories.map(a => ({
+                    accessoryId: a.accessoryId,
+                    quantity: a.quantity
+                }))
             };
-            setSavedTransformers(prev => [newItem, ...prev]);
-            alert('Đã lưu biến áp mới!');
+
+            try {
+                let res;
+                if (editingId) {
+                    res = await fetch(`/api/transformers/square/${editingId}`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    res = await fetch('/api/transformers/square', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (res.ok) {
+                    alert(editingId ? 'Đã cập nhật!' : 'Đã lưu thành công!');
+                    fetchCatalog(); // Refresh list
+                    resetForm(false);
+                    setIsEditModalOpen(false);
+                } else {
+                    alert('Lỗi khi lưu dữ liệu!');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Có lỗi xảy ra!');
+            }
+        } else {
+            alert('Chức năng lưu Biến áp Tròn chưa hỗ trợ API trong bản demo này.');
         }
-        setLastCalculated(result); // Show result in background
-        resetForm(false); // Keep result, reset form ID
+    };
+
+    const deleteTransformer = async (id) => {
+        if (!window.confirm('Bạn có chắc muốn xóa biến áp này?')) return;
+        try {
+            const res = await fetch(`/api/transformers/${id}`, { method: 'DELETE' });
+            if (res.ok) fetchCatalog();
+            else alert('Lỗi khi xóa!');
+        } catch(err) { console.error(err); }
     };
 
     const resetForm = (clearResult = true) => {
@@ -239,12 +291,6 @@ function App() {
         setNewTransformer(item.inputData);
         setEditingId(item.id);
         setIsEditModalOpen(true);
-    };
-
-    const deleteTransformer = (id) => {
-        if (!window.confirm('Bạn có chắc muốn xóa biến áp này?')) return;
-        setSavedTransformers(prev => prev.filter(t => t.id !== id));
-        if (editingId === id) resetForm();
     };
 
     // --- FORM HANDLERS (Winding/Accessory) ---
@@ -274,49 +320,86 @@ function App() {
     };
 
     // --- CATALOG HANDLERS ---
-    const saveLamination = (e) => {
+    const saveLamination = async (e) => {
         e.preventDefault();
-        setLaminations([...laminations, { 
-            id: Date.now(), 
-            ...newItem.lamination, 
-            pricePerKg: Number(newItem.lamination.pricePerKg), 
-            corePrice: Number(newItem.lamination.corePrice),
-            createdDate: new Date().toISOString(),
-            updatedDate: new Date().toISOString()
-        }]);
-        setNewItem(prev => ({ ...prev, lamination: { name: '', pricePerKg: '', coreName: '', corePrice: '' } }));
+        try {
+            const payload = { 
+                ...newItem.lamination, 
+                pricePerKg: Number(newItem.lamination.pricePerKg), 
+                corePrice: Number(newItem.lamination.corePrice)
+            };
+            const res = await fetch('/api/catalog/ei-laminations', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                await fetchCatalog();
+                setNewItem(prev => ({ ...prev, lamination: { name: '', pricePerKg: '', coreName: '', corePrice: '' } }));
+            } else {
+                alert('Lỗi khi lưu Phe/Lõi');
+            }
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const saveWinding = (e) => {
+    const saveWinding = async (e) => {
         e.preventDefault();
-        setWindingSpecs([...windingSpecs, { 
-            id: Date.now(), 
-            ...newItem.winding, 
-            diameter: Number(newItem.winding.diameter), 
-            pricePerKg: Number(newItem.winding.pricePerKg),
-            createdDate: new Date().toISOString(),
-            updatedDate: new Date().toISOString()
-        }]);
-        setNewItem(prev => ({ ...prev, winding: { name: '', material: 'COPPER', type: 'PRIMARY', diameter: '', pricePerKg: '' } }));
+        try {
+            const payload = { 
+                ...newItem.winding, 
+                diameter: Number(newItem.winding.diameter), 
+                pricePerKg: Number(newItem.winding.pricePerKg)
+            };
+            const res = await fetch('/api/catalog/winding-specs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                await fetchCatalog();
+                setNewItem(prev => ({ ...prev, winding: { name: '', material: 'COPPER', type: 'PRIMARY', diameter: '', pricePerKg: '' } }));
+            } else {
+                alert('Lỗi khi lưu Dây quấn');
+            }
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const saveAccessory = (e) => {
+    const saveAccessory = async (e) => {
         e.preventDefault();
-        setAccessories([...accessories, { 
-            id: Date.now(), 
-            ...newItem.accessory, 
-            unitPrice: Number(newItem.accessory.unitPrice),
-            createdDate: new Date().toISOString(),
-            updatedDate: new Date().toISOString()
-        }]);
-        setNewItem(prev => ({ ...prev, accessory: { name: '', type: 'ELECTRIC_WIRE', unitType: 'PER_PIECE', unitPrice: '' } }));
+        try {
+            const payload = { 
+                ...newItem.accessory, 
+                unitPrice: Number(newItem.accessory.unitPrice)
+            };
+            const res = await fetch('/api/catalog/accessories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                await fetchCatalog();
+                setNewItem(prev => ({ ...prev, accessory: { name: '', type: 'ELECTRIC_WIRE', unitType: 'PER_PIECE', unitPrice: '' } }));
+            } else {
+                alert('Lỗi khi lưu Phụ kiện');
+            }
+        } catch (err) {
+            console.error(err);
+        }
     };
 
-    const deleteItem = (type, id) => {
+    const deleteItem = async (type, id) => {
         if (!window.confirm('Bạn có chắc muốn xóa?')) return;
-        if (type === 'ei-laminations') setLaminations(prev => prev.filter(i => i.id !== id));
-        else if (type === 'winding-specs') setWindingSpecs(prev => prev.filter(i => i.id !== id));
-        else if (type === 'accessories') setAccessories(prev => prev.filter(i => i.id !== id));
+        try {
+            const res = await fetch(`/api/catalog/${type}/${id}`, { method: 'DELETE' });
+            if (res.ok) await fetchCatalog();
+            else alert('Không thể xóa mục này (có thể đang được sử dụng).');
+        } catch (err) {
+            console.error(err);
+        }
     };
 
     // --- QUICK ADD HANDLER ---
@@ -434,10 +517,10 @@ function App() {
                 </div>
             )}
 
-            {/* CALCULATOR SCREEN */}
-            {activeTab === 'calculator' && (
-                <div className="animate-in fade-in duration-300 relative">
-                     {/* API SIMULATION WARNING */}
+            {/* CALCULATOR SCCONNECTION SUCCESS */}
+                     <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-lg mb-6 text-sm flex items-center gap-2">
+                        <span className="bg-green-200 text-green-800 text-xs font-bold px-2 py-0.5 rounded-full">ONLINE</span>
+                        Đã kết nối cơ sở dữ liệu hệ thống
                      <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-2 rounded-lg mb-6 text-sm flex items-center gap-2">
                         <span className="bg-yellow-200 text-yellow-800 text-xs font-bold px-2 py-0.5 rounded-full">DEV MODE</span>
                         Dữ liệu đang được lưu tạm thời trên trình duyệt. Chưa kết nối database thực tế.

@@ -145,6 +145,8 @@ public class CatalogService {
         dto.setMaterial(entity.getMaterial());
         dto.setDiameter(entity.getDiameter());
         dto.setPricePerKg(entity.getPricePerKg());
+        dto.setCreatedDate(entity.getCreatedDate());
+        dto.setUpdatedDate(entity.getUpdatedDate());
         return dto;
     }
 
@@ -165,6 +167,8 @@ public class CatalogService {
         dto.setDescription(entity.getDescription());
         dto.setUnitType(entity.getUnitType());
         dto.setUnitPrice(entity.getUnitPrice());
+        dto.setCreatedDate(entity.getCreatedDate());
+        dto.setUpdatedDate(entity.getUpdatedDate());
         return dto;
     }
 
@@ -188,6 +192,8 @@ public class CatalogService {
             dto.setCoreDescription(core.getDescription());
             dto.setCorePrice(core.getPrice());
         }
+        dto.setCreatedDate(lamination.getCreatedDate());
+        dto.setUpdatedDate(lamination.getUpdatedDate());
         return dto;
     }
 }
