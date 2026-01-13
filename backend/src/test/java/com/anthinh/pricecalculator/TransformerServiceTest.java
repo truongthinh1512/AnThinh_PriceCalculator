@@ -86,7 +86,7 @@ public class TransformerServiceTest {
             return t;
         });
         when(eiLaminationRepository.findById(1L)).thenReturn(Optional.of(lamination));
-        when(eiCoreRepository.findByLamination(lamination)).thenReturn(Optional.of(core));
+        // Removed unused eiCoreRepository stub
         
         when(windingSpecRepository.findById(10L)).thenReturn(Optional.of(windingSpec));
         when(accessoryRepository.findById(20L)).thenReturn(Optional.of(accessory));
