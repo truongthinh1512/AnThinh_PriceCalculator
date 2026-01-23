@@ -21,6 +21,10 @@ public class TransformerWinding {
     @JoinColumn(name = "winding_spec_id", nullable = false)
     private WindingSpec windingSpec;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private WindingType type;
+
     @Column(nullable = false)
     private Double weightKg;
 

@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8080', // Default to local backend, change to your Render URL later
+        target: 'http://localhost:8081', // Docker backend port
         changeOrigin: true,
         secure: false,
       },

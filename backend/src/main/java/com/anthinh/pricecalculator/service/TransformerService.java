@@ -15,7 +15,9 @@ import java.util.stream.Collectors;
 public class TransformerService {
 
     private final TransformerRepository transformerRepository;
+    private final CustomerRepository customerRepository;
     private final EiLaminationRepository eiLaminationRepository;
+    private final EiCoreRepository eiCoreRepository;
     private final SquareCoreUsageRepository squareCoreUsageRepository;
     private final RoundCoreUsageRepository roundCoreUsageRepository;
     private final WindingSpecRepository windingSpecRepository;
@@ -44,11 +46,20 @@ public class TransformerService {
 
     @Transactional
     public TransformerDetailDto createSquareTransformer(SquareTransformerRequest request) {
+        validateWindingDistribution(request.getWindings());
+
         Transformer transformer = new Transformer();
         transformer.setName(request.getName());
         transformer.setType(TransformerType.VUONG);
         transformer.setModel3dUrl(request.getModel3dUrl());
         transformer.setTotalCost(0.0);
+
+        if (request.getCustomerId() != null) {
+            Customer customer = customerRepository.findById(request.getCustomerId())
+                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+            transformer.setCustomer(customer);
+        }
+
         transformer = transformerRepository.save(transformer);
 
         updateSquareCoreAndChildren(transformer, request);
@@ -58,6 +69,8 @@ public class TransformerService {
 
     @Transactional
     public TransformerDetailDto updateSquareTransformer(Long id, SquareTransformerRequest request) {
+        validateWindingDistribution(request.getWindings());
+
         Transformer transformer = transformerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transformer not found"));
         
@@ -71,6 +84,30 @@ public class TransformerService {
         return getTransformerDetails(transformer.getId());
     }
 
+
+    private void validateWindingDistribution(List<WindingUsageRequest> windings) {
+        if (windings == null) return; 
+
+        long primaryCount = 0;
+        long secondaryCount = 0;
+
+        for (WindingUsageRequest w : windings) {
+            // Validate based on User Input 'type', NOT spec type
+            if (w.getType() == WindingType.PRIMARY) {
+                primaryCount++;
+            } else if (w.getType() == WindingType.SECONDARY) {
+                secondaryCount++;
+            }
+        }
+
+        if (primaryCount != 1) {
+            throw new RuntimeException("Biến áp phải có đúng 1 dây sơ cấp (PRIMARY). Hiện tại: " + primaryCount);
+        }
+        if (secondaryCount != 1) {
+            throw new RuntimeException("Biến áp phải có đúng 1 dây thứ cấp (SECONDARY). Hiện tại: " + secondaryCount);
+        }
+    }
+
     private void updateSquareCoreAndChildren(Transformer transformer, SquareTransformerRequest request) {
         double totalCost = 0.0;
 
@@ -78,13 +115,19 @@ public class TransformerService {
         EiLamination lamination = eiLaminationRepository.findById(request.getEiLaminationId())
                 .orElseThrow(() -> new RuntimeException("EiLamination not found"));
 
+        // Find associated EiCore (Bobbin/Kit) for this lamination type
+        // This is required to satisfy the Not-Null constraint on SquareCoreUsage.eiCore
+        EiCore eiCore = eiCoreRepository.findByLamination(lamination)
+                .orElseThrow(() -> new RuntimeException("No EiCore definition found for Lamination ID: " + lamination.getId() + ". Please create an EiCore entry linked to this lamination first."));
+
         SquareCoreUsage coreUsage = new SquareCoreUsage();
         coreUsage.setTransformer(transformer);
         coreUsage.setLamination(lamination);
+        coreUsage.setEiCore(eiCore); // FIXED: Set the required EiCore
         coreUsage.setLaminationWeightKg(request.getLaminationWeightKg());
         coreUsage.setLaminationCost(request.getLaminationWeightKg() * lamination.getPricePerKg());
-        coreUsage.setCorePrice(0.0); 
-        coreUsage.setCost(coreUsage.getLaminationCost());
+        coreUsage.setCorePrice(eiCore.getPrice()); // Use the price from EiCore entity
+        coreUsage.setCost(coreUsage.getLaminationCost() + coreUsage.getCorePrice());
         
         squareCoreUsageRepository.save(coreUsage);
         totalCost += coreUsage.getCost();
@@ -111,11 +154,20 @@ public class TransformerService {
 
     @Transactional
     public TransformerDetailDto createRoundTransformer(RoundTransformerRequest request) {
+        validateWindingDistribution(request.getWindings());
+
         Transformer transformer = new Transformer();
         transformer.setName(request.getName());
         transformer.setType(TransformerType.TRON);
         transformer.setModel3dUrl(request.getModel3dUrl());
         transformer.setTotalCost(0.0);
+
+        if (request.getCustomerId() != null) {
+            Customer customer = customerRepository.findById(request.getCustomerId())
+                    .orElseThrow(() -> new RuntimeException("Customer not found"));
+            transformer.setCustomer(customer);
+        }
+
         transformer = transformerRepository.save(transformer);
 
         updateRoundCoreAndChildren(transformer, request);
@@ -125,6 +177,8 @@ public class TransformerService {
 
     @Transactional
     public TransformerDetailDto updateRoundTransformer(Long id, RoundTransformerRequest request) {
+        validateWindingDistribution(request.getWindings());
+
         Transformer transformer = transformerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transformer not found"));
         
@@ -191,6 +245,7 @@ public class TransformerService {
         TransformerWinding usage = new TransformerWinding();
         usage.setTransformer(transformer);
         usage.setWindingSpec(spec);
+        usage.setType(req.getType()); // Set type from request
         usage.setWeightKg(req.getWeightKg());
         usage.setCost(req.getWeightKg() * spec.getPricePerKg()); 
         
@@ -219,6 +274,82 @@ public class TransformerService {
         dto.setType(t.getType());
         dto.setTotalCost(t.getTotalCost());
         dto.setModel3dUrl(t.getModel3dUrl());
+        
+        // BaseEntity fields
+        dto.setCreatedDate(t.getCreatedDate());
+        dto.setUpdatedDate(t.getUpdatedDate());
+
+        // CUSTOMER
+        if (t.getCustomer() != null) {
+            CustomerDto cDto = new CustomerDto();
+            cDto.setId(t.getCustomer().getId());
+            cDto.setName(t.getCustomer().getName());
+            cDto.setPhoneNumber(t.getCustomer().getPhoneNumber());
+            cDto.setAddress(t.getCustomer().getAddress());
+            cDto.setNote(t.getCustomer().getNote());
+            dto.setCustomer(cDto);
+        }
+
+        // CORE
+        if (t.getType() == TransformerType.VUONG) {
+            squareCoreUsageRepository.findByTransformer(t).ifPresent(usage -> {
+                TransformerDetailDto.SquareCoreDto coreDto = new TransformerDetailDto.SquareCoreDto();
+                coreDto.setLaminationId(usage.getLamination().getId());
+                coreDto.setLaminationName(usage.getLamination().getName());
+                coreDto.setLaminationWeightKg(usage.getLaminationWeightKg());
+                coreDto.setLaminationPricePerKg(usage.getLamination().getPricePerKg());
+                coreDto.setLaminationCost(usage.getLaminationCost());
+                
+                if (usage.getEiCore() != null) {
+                    coreDto.setCoreName(usage.getEiCore().getName());
+                    coreDto.setCorePrice(usage.getCorePrice());
+                }
+                coreDto.setTotalCost(usage.getCost());
+                dto.setSquareCore(coreDto);
+            });
+        } else if (t.getType() == TransformerType.TRON) {
+            roundCoreUsageRepository.findByTransformer(t).ifPresent(usage -> {
+                TransformerDetailDto.RoundCoreDto coreDto = new TransformerDetailDto.RoundCoreDto();
+                coreDto.setWeightKg(usage.getWeightKg());
+                coreDto.setPricePerKg(usage.getPricePerKg());
+                coreDto.setCost(usage.getCost());
+                dto.setRoundCore(coreDto);
+            });
+        }
+
+        // WINDINGS
+        List<TransformerWinding> windingUsages = transformerWindingRepository.findByTransformer(t);
+        if (windingUsages != null && !windingUsages.isEmpty()) {
+            dto.setWindings(windingUsages.stream().map(w -> {
+                TransformerDetailDto.WindingUsageDto wDto = new TransformerDetailDto.WindingUsageDto();
+                wDto.setSpecId(w.getWindingSpec().getId());
+                wDto.setSpecName(w.getWindingSpec().getName());
+                wDto.setMaterial(w.getWindingSpec().getMaterial().toString());
+                wDto.setType(w.getType() != null ? w.getType().toString() : w.getWindingSpec().getType().toString());
+                wDto.setDiameter(w.getWindingSpec().getDiameter());
+                wDto.setPricePerKg(w.getWindingSpec().getPricePerKg());
+                wDto.setWeightKg(w.getWeightKg());
+                wDto.setCost(w.getCost());
+                return wDto;
+            }).collect(Collectors.toList()));
+        }
+
+        // ACCESSORIES
+        List<TransformerAccessoryUsage> accUsages = transformerAccessoryUsageRepository.findByTransformer(t);
+        if (accUsages != null && !accUsages.isEmpty()) {
+            dto.setAccessories(accUsages.stream().map(a -> {
+                TransformerDetailDto.AccessoryUsageDto aDto = new TransformerDetailDto.AccessoryUsageDto();
+                aDto.setAccessoryId(a.getAccessory().getId());
+                aDto.setAccessoryName(a.getAccessory().getName());
+                aDto.setType(a.getAccessory().getType().toString());
+                aDto.setUnitType(a.getAccessory().getUnitType().toString());
+                aDto.setUnitPrice(a.getAccessory().getUnitPrice());
+                aDto.setQuantity(a.getQuantity());
+                aDto.setCost(a.getCost());
+                return aDto;
+            }).collect(Collectors.toList()));
+        }
+
         return dto;
     }
 }

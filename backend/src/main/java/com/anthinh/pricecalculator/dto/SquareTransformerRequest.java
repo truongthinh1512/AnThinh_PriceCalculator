@@ -7,6 +7,7 @@ import java.util.List;
 public class SquareTransformerRequest {
     private String name;
     private String model3dUrl;
+    private Long customerId;
     private Long eiLaminationId;
     private Long eiCoreId;
     private Double laminationWeightKg;

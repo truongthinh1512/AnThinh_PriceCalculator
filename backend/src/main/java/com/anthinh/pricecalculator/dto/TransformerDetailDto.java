@@ -11,6 +11,11 @@ public class TransformerDetailDto {
     private TransformerType type;
     private Double totalCost;
     private String model3dUrl;
+    
+    private java.time.LocalDateTime createdDate;
+    private java.time.LocalDateTime updatedDate;
+
+    private CustomerDto customer;
 
     // Components
     private SquareCoreDto squareCore;
@@ -20,6 +25,7 @@ public class TransformerDetailDto {
 
     @Data
     public static class SquareCoreDto {
+        private Long laminationId; // Added for editing
         private String laminationName;
         private Double laminationWeightKg;
         private Double laminationPricePerKg;
@@ -39,6 +45,7 @@ public class TransformerDetailDto {
 
     @Data
     public static class WindingUsageDto {
+        private Long specId; // Added for editing
         private String specName;
         private String material; // Enum name
         private String type; // Enum name
@@ -50,6 +57,7 @@ public class TransformerDetailDto {
 
     @Data
     public static class AccessoryUsageDto {
+        private Long accessoryId; // Added for editing
         private String accessoryName;
         private String type; // Enum name
         private String unitType; // Enum name

@@ -24,4 +24,8 @@ public class Transformer extends BaseEntity {
     private Double totalCost;
 
     private String model3dUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id")
+    private Customer customer;
 }
