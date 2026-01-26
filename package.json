@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.0.0",
+    "konva": "^10.2.0",
+    "react-konva": "^19.2.1"
+  }
+}

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="600" height="400" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bodyGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E0E0E0"/>
+      <stop offset="45%" stop-color="#B0B7BC"/>
+      <stop offset="100%" stop-color="#7A8085"/>
+    </linearGradient>
+    <radialGradient id="rimGrad" cx="30%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.5)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12"/>
+    </filter>
+  </defs>
+
+  <!-- ground shadow -->
+  <ellipse cx="300" cy="285" rx="160" ry="30" fill="rgba(0,0,0,0.25)" filter="url(#shadow)"/>
+
+  <!-- body -->
+  <g id="toroid-body">
+    <path d="
+      M 150 160
+      A 150 80 0 0 1 450 160
+      L 450 230
+      A 150 80 0 0 1 150 230
+      Z" fill="url(#bodyGrad)"/>
+  </g>
+
+  <!-- top rim -->
+  <ellipse cx="300" cy="160" rx="150" ry="80" fill="#BFC5C9"/>
+  <ellipse cx="300" cy="160" rx="150" ry="80" fill="url(#rimGrad)"/>
+
+  <!-- inner hole -->
+  <ellipse id="toroid-inner" cx="300" cy="160" rx="110" ry="60" fill="#0F0F10"/>
+
+  <!-- center pin -->
+  <g id="toroid-pin">
+    <rect x="292" y="120" width="16" height="30" fill="#8C8C8C"/>
+    <ellipse cx="300" cy="120" rx="8" ry="4" fill="#CFCFCF"/>
+  </g>
+</svg>

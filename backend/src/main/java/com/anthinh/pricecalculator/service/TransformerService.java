@@ -52,6 +52,7 @@ public class TransformerService {
         transformer.setName(request.getName());
         transformer.setType(TransformerType.VUONG);
         transformer.setModel3dUrl(request.getModel3dUrl());
+        transformer.setDrawingConfig(request.getDrawingConfig());
         transformer.setTotalCost(0.0);
 
         if (request.getCustomerId() != null) {
@@ -76,6 +77,7 @@ public class TransformerService {
         
         transformer.setName(request.getName());
         transformer.setModel3dUrl(request.getModel3dUrl());
+        transformer.setDrawingConfig(request.getDrawingConfig());
         // Type remains VUONG
 
         clearTransformerDetails(transformer);
@@ -160,6 +162,7 @@ public class TransformerService {
         transformer.setName(request.getName());
         transformer.setType(TransformerType.TRON);
         transformer.setModel3dUrl(request.getModel3dUrl());
+        transformer.setDrawingConfig(request.getDrawingConfig());
         transformer.setTotalCost(0.0);
 
         if (request.getCustomerId() != null) {
@@ -184,6 +187,7 @@ public class TransformerService {
         
         transformer.setName(request.getName());
         transformer.setModel3dUrl(request.getModel3dUrl());
+        transformer.setDrawingConfig(request.getDrawingConfig());
 
         clearTransformerDetails(transformer);
         updateRoundCoreAndChildren(transformer, request);
@@ -273,6 +277,7 @@ public class TransformerService {
         dto.setName(t.getName());
         dto.setType(t.getType());
         dto.setTotalCost(t.getTotalCost());
+        dto.setDrawingConfig(t.getDrawingConfig());
         dto.setModel3dUrl(t.getModel3dUrl());
         
         // BaseEntity fields

@@ -11,6 +11,7 @@ public class TransformerDetailDto {
     private TransformerType type;
     private Double totalCost;
     private String model3dUrl;
+    private String drawingConfig;
     
     private java.time.LocalDateTime createdDate;
     private java.time.LocalDateTime updatedDate;

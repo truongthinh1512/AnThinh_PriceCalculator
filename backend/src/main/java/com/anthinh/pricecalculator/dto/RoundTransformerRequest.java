@@ -7,6 +7,7 @@ import java.util.List;
 public class RoundTransformerRequest {
     private String name;
     private String model3dUrl;
+    private String drawingConfig;
     private Long customerId;
     private Double coreWeightKg;
     private Double corePricePerKg;
